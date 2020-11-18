@@ -1,11 +1,11 @@
 <?php
 
-use Laravel\Lumen\Testing\DatabaseMigrations;
-use Laravel\Lumen\Testing\DatabaseTransactions;
-use Illuminate\Support\Facades\Redis;
-
 use App\Services\ShorturlService;
 use App\Repositories\UrlRepository;
+
+use Illuminate\Support\Facades\Redis;
+use Laravel\Lumen\Testing\DatabaseMigrations;
+use Laravel\Lumen\Testing\DatabaseTransactions;
 
 class UrlTest extends TestCase
 {
@@ -97,13 +97,9 @@ class UrlTest extends TestCase
      */
     public function testServiceGetHash()
     {
-        $observer = $this->getMockBuilder(UrlRepository::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['save'])
-            ->getMock();
-
-        $observer->expects($this->once())
-            ->method('save');
+        $observer = Mockery::mock(UrlRepository::class);
+        $observer->shouldReceive('save')
+            ->once();
 
         Redis::shouldReceive('command')
             ->once()
@@ -121,21 +117,18 @@ class UrlTest extends TestCase
      */
     public function testServiceGetUrl()
     {
-        $observer = $this->getMockBuilder(UrlRepository::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['getUrlByHash'])
-            ->getMock();
+        $observer = Mockery::mock(UrlRepository::class);
+        $observer->shouldReceive('getUrlByHash')
+            ->once()
+            ->andReturn($this->url);
 
-        $observer->expects($this->once())
-            ->method('getUrlByHash')
-            ->with($this->equalTo('aaaaaa'))
-            ->will($this->returnValue($this->url));
+        $this->app->instance(UrlRepository::class, $observer);
 
         Redis::shouldReceive('get')
             ->once()
             ->andReturn(null);
         
-        $obj = new ShorturlService($observer);
+        $obj = app(ShorturlService::class);
         $url = $obj->getUrl('aaaaaa');
         $this->assertEquals($this->url, $url);
     }
